@@ -361,8 +361,6 @@ class Z3ExtensionTest : Z3Initializer() {
         G.reset()
         Options.v().set_prepend_classpath(true)
         Options.v().set_allow_phantom_refs(true)
-        G.v().initJdk(G.JreInfo("/usr/lib/jvm/java-1.11.0-openjdk-amd64", 11))
-        Scene.v().addBasicClass("java.util.Vector")
         Scene.v().loadNecessaryClasses()
         PackManager.v().runPacks()
         Scene.v().classes.forEach {
@@ -373,9 +371,9 @@ class Z3ExtensionTest : Z3Initializer() {
         val hierarchy = Scene.v().orMakeFastHierarchy
 
 //        val hierarchy = Scene.v().activeHierarchy
-//        val object = SootClass("java.lang.Object")
-//        assertNotNull(object)
-//        hierarchy.getDirectSubclassesOf(object).forEach{
+//        val obj = Scene.v().getSootClass("java.lang.Object")
+//        assertNotNull(obj)
+//        hierarchy.getDirectSubclassesOf(obj).forEach {
 //            println(it.name)
 //        }
 
@@ -398,6 +396,8 @@ class Z3ExtensionTest : Z3Initializer() {
             val zConst = ctx.mkConst(z, type)
 
             val types = HashMap<String, Expr>()
+            val obj = Scene.v().getSootClass("java.lang.Object")
+            types[obj.name] = ctx.mkConst(obj.name, type)
             val reflect = ctx.mkForall(arrayOf(xConst), isSubtype.apply(xConst, xConst), 1, null, null, null ,null)
             val antisymmetry = ctx.mkForall(arrayOf(xConst, yConst), ctx.mkImplies(ctx.mkAnd(
                 isSubtype.apply(xConst, yConst) as BoolExpr?, isSubtype(yConst, xConst) as BoolExpr?), ctx.mkEq(xConst, yConst)), 1, null, null, null, null)
@@ -419,7 +419,7 @@ class Z3ExtensionTest : Z3Initializer() {
             val solver = ctx.mkSolver()
             solver.add(reflect, antisymmetry, transitivity, interfaceIsNotSubclass, subclassEqSubtypeForNotInterfaces) // adding initial constraints
 
-            val obj = Scene.v().getSootClass("java.lang.Object")
+
             val firstLayer = hierarchy.getSubclassesOf(obj)
             for (cl in firstLayer) {
                 types[cl.name] = ctx.mkConst(cl.name, type)
@@ -456,6 +456,9 @@ class Z3ExtensionTest : Z3Initializer() {
                 else {
                     solver.add(ctx.mkNot(isInterface.apply(types[curClass.name]) as BoolExpr?))
                     hierarchy.getSubclassesOf(curClass).forEach {
+                        if (!types.containsKey(it.name)) {
+                            types[it.name] = ctx.mkConst(it.name, type)
+                        }
                         solver.add(isSubclass.apply(types[it.name], types[curClass.name]) as BoolExpr?)
                         queue.addFirst(it)
                     }
