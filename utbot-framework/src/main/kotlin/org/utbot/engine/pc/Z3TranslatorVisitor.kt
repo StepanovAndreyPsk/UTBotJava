@@ -119,6 +119,10 @@ open class Z3TranslatorVisitor(
         z3Context.mkBVSubNoOverflow(translate(expr.left) as BitVecExpr, translate(expr.right) as BitVecExpr) // , true)
     }
 
+//    override fun visit(expr: UtMkUninterpretedSortExpression): UninterpretedSort = expr.run {
+//        z3Context.mkUninterpretedSort(expr.name)
+//    }
+
     override fun visit(expr: UtNegExpression): Expr = expr.run {
         negate(z3Context, translate(variable.expr).z3Variable(variable.type))
     }
@@ -179,6 +183,9 @@ open class Z3TranslatorVisitor(
         constraints += encodePossibleTypes(symTypeId, filteredPossibleTypes)
 
         z3Context.mkAnd(*constraints.toTypedArray())
+
+        z3Context.mkConst(symTypeId.string, )
+        z3Context.mkApp()
     }
 
     // TODO REMOVE IT JIRA:1321

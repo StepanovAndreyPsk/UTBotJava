@@ -372,6 +372,7 @@ class UtIsExpression(
     override fun hashCode() = hashCode
 }
 
+
 /**
  * [UtBoolExpression] that represents that an object with address [addr] is parameterized by [types]
  */
@@ -754,6 +755,31 @@ data class UtAndBoolExpression(val exprs: List<UtBoolExpression>) : UtBoolExpres
 
     override fun hashCode() = hashCode
 }
+
+//data class UtMkUninterpretedSortExpression(val name: String) : UtExpression(UtUninterpretedSort(name)) {
+//    override val hashCode = Objects.hash(name)
+//    override fun <TResult> accept(visitor: UtExpressionVisitor<TResult>): TResult = visitor.visit(this)
+//
+//    override fun toString() = "(mkUninterpretedSort $name)"
+//
+//    override fun equals(other: Any?): Boolean {
+//        if (this === other) return true
+//        if (javaClass != other?.javaClass) return false
+//
+//        other as UtMkUninterpretedSortExpression
+//
+//        if (name != other.name) return false
+//        return true
+//    }
+//}
+//
+//data class UtFuncDeclExpression(
+//    val name : String,
+//    val argSorts : List<UtSort>,
+//    val retSort : UtSort
+//) {
+//
+//}
 
 data class UtAddNoOverflowExpression(
     val left: UtExpression,

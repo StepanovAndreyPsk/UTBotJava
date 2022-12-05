@@ -23,10 +23,12 @@ import org.utbot.framework.UtSettings.checkSolverTimeoutMillis
 import org.utbot.framework.UtSettings.preferredCexOption
 import com.microsoft.z3.BoolExpr
 import com.microsoft.z3.Context
+import com.microsoft.z3.FuncDecl
 import com.microsoft.z3.Params
 import com.microsoft.z3.Solver
 import com.microsoft.z3.Status.SATISFIABLE
 import com.microsoft.z3.Status.UNSATISFIABLE
+import com.microsoft.z3.UninterpretedSort
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentHashSetOf
 import mu.KotlinLogging
@@ -65,6 +67,8 @@ fun mkOr(vararg expr: UtBoolExpression): UtBoolExpression = mkOr(expr.toList())
 fun mkOr(exprs: List<UtBoolExpression>): UtBoolExpression = reduceOr(exprs)
 fun mkAnd(vararg expr: UtBoolExpression): UtBoolExpression = mkAnd(expr.toList())
 fun mkAnd(exprs: List<UtBoolExpression>): UtBoolExpression = reduceAnd(exprs)
+
+//fun mkFuncDecl(name: String)
 
 private fun reduceOr(exprs: List<UtBoolExpression>) =
     exprs.filterNot { it == UtFalse }.let {
@@ -125,12 +129,18 @@ data class UtSolver constructor(
     private val params: Params = context.mkDefaultParams(checkSolverTimeoutMillis),
 
     //these constraints.hard are already added to z3solver
+
     private var constraints: BaseQuery = Query(),
 
     // Constraints that should not be added in the solver as hypothesis.
     // Instead, we use `check` to find out if they are satisfiable.
     // It is required to have unsat cores with them.
     var assumption: Assumption = emptyAssumption(),
+
+    val type: UninterpretedSort = context.mkUninterpretedSort("Type"),
+    val isSubtypeAxiom: FuncDecl = context.mkFuncDecl("isSubTypeAxiom", arrayOf(type, type), context.boolSort),
+    val isSubclassAxiom: FuncDecl = context.mkFuncDecl("isSubclassAxiom", arrayOf(type, type), context.boolSort),
+    val isInterfaceAxiom: FuncDecl = context.mkFuncDecl("isInterfaceAxiom", type, context.boolSort),
 
     //new constraints for solver (kind of incremental behavior)
     private var hardConstraintsNotYetAddedToZ3Solver: PersistentSet<UtBoolExpression> = persistentHashSetOf(),
@@ -150,6 +160,35 @@ data class UtSolver constructor(
 
     //protection against solver reusage
     private var canBeCloned: Boolean = true
+
+    private fun fillInAxioms(): Query {
+        val x = context.mkSymbol("x")
+        val y = context.mkSymbol("y")
+        val z = context.mkSymbol("z")
+        val xConst = context.mkConst(x, type)
+        val yConst = context.mkConst(y, type)
+        val zConst = context.mkConst(z, type)
+
+        val reflect = context.mkForall(arrayOf(xConst), isSubtypeAxiom.apply(xConst, xConst), 1, null, null, null ,null)
+        val antisymmetry = context.mkForall(arrayOf(xConst, yConst), context.mkImplies(context.mkAnd(
+            isSubtypeAxiom.apply(xConst, yConst) as BoolExpr?, isSubtypeAxiom.apply(yConst, xConst) as BoolExpr?), context.mkEq(xConst, yConst)), 1, null, null, null, null)
+        val transitivity = context.mkForall(arrayOf(xConst, yConst, zConst), context.mkImplies(context.mkAnd(
+            isSubclassAxiom.apply(xConst, yConst) as BoolExpr?, isSubclassAxiom.apply(yConst, zConst) as BoolExpr?), isSubclassAxiom.apply(xConst, zConst) as BoolExpr?), 1, null, null, null, null)
+
+        val objConst = context.mkConst("java.lang.Object", type)
+        val interfaceIsNotSubclass = context.mkForall(arrayOf(xConst, yConst), context.mkImplies(
+            context.mkAnd(context.mkNot(isInterfaceAxiom.apply(yConst) as BoolExpr?), isSubtypeAxiom.apply(xConst, yConst) as BoolExpr?, context.mkNot(context.mkEq(yConst, objConst))), // ?
+            context.mkNot(isInterfaceAxiom.apply(xConst) as BoolExpr?)
+        ),
+            1, null, null, null, null)
+        val subclassEqSubtypeForNotInterfaces = context.mkForall(arrayOf(xConst, yConst), context.mkImplies(
+            context.mkAnd(context.mkAnd(context.mkNot(isInterfaceAxiom.apply(xConst) as BoolExpr?), context.mkNot(isInterfaceAxiom.apply(yConst) as BoolExpr?))),
+            context.mkEq(isSubclassAxiom.apply(xConst, yConst) as BoolExpr?, isSubtypeAxiom.apply(xConst, yConst))
+        ),
+            1, null, null, null, null)
+        z3Solver.add(reflect, antisymmetry, transitivity, interfaceIsNotSubclass, subclassEqSubtypeForNotInterfaces)
+        return Query()
+    }
 
     val simplificator: Simplificator
         get() = constraints.let { if (it is Query) it.simplificator else Simplificator() }

@@ -23,6 +23,9 @@ import soot.Type
 sealed class UtSort {
     override fun toString(): String = this.javaClass.simpleName.removeSurrounding("Ut", "Sort")
 }
+data class UtUninterpretedSort(val sortName: String) : UtSort() {
+    val name: String = sortName
+}
 
 data class UtArraySort(val indexSort: UtSort, val itemSort: UtSort) : UtSort() {
     private val hashCode = Objects.hash(indexSort, itemSort)
@@ -102,6 +105,8 @@ fun UtSort.toZ3Sort(ctx: Context): Sort = when (this) {
     UtBoolSort -> ctx.mkBoolSort()
 
     UtSeqSort -> ctx.stringSort
+
+    is UtUninterpretedSort -> ctx.mkUninterpretedSort(name)
 
     is UtArraySort -> ctx.mkArraySort(indexSort.toZ3Sort(ctx), itemSort.toZ3Sort(ctx))
 }
