@@ -47,6 +47,8 @@ data class UtArraySort(val indexSort: UtSort, val itemSort: UtSort) : UtSort() {
     override fun hashCode() = hashCode
 }
 
+object UtUISort : UtSort()
+
 // String literal (not a String Java object!)
 object UtSeqSort : UtSort()
 

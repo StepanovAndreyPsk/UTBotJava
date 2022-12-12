@@ -30,12 +30,10 @@ import soot.PrimType
 import soot.RefType
 import soot.Type
 
-
 open class Z3TranslatorVisitor(
     private val z3Context: Context,
     private val typeRegistry: TypeRegistry
 ) : UtExpressionVisitor<Expr> {
-
     //thread-safe
     private val expressionTranslationCache = IdentityHashMap<UtExpression, Expr>()
 
@@ -182,10 +180,9 @@ open class Z3TranslatorVisitor(
 
         constraints += encodePossibleTypes(symTypeId, filteredPossibleTypes)
 
-        z3Context.mkAnd(*constraints.toTypedArray())
+        constraints += z3Context.mkApp(z3Context.getSubclassAxiom(), ) as BoolExpr
 
-        z3Context.mkConst(symTypeId.string, )
-        z3Context.mkApp()
+        z3Context.mkAnd(*constraints.toTypedArray())
     }
 
     // TODO REMOVE IT JIRA:1321

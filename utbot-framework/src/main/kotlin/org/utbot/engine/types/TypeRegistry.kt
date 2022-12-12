@@ -22,30 +22,9 @@ import org.utbot.engine.isInappropriate
 import org.utbot.engine.isJavaLangObject
 import org.utbot.engine.nullObjectAddr
 import org.utbot.engine.numDimensions
-import org.utbot.engine.pc.UtAddrExpression
-import org.utbot.engine.pc.UtAddrSort
-import org.utbot.engine.pc.UtArrayExpressionBase
-import org.utbot.engine.pc.UtArraySort
-import org.utbot.engine.pc.UtBoolExpression
-import org.utbot.engine.pc.UtBoolSort
-import org.utbot.engine.pc.UtEqGenericTypeParametersExpression
-import org.utbot.engine.pc.UtFalse
-import org.utbot.engine.pc.UtGenericExpression
-import org.utbot.engine.pc.UtInt32Sort
-import org.utbot.engine.pc.UtIsExpression
-import org.utbot.engine.pc.UtIsGenericTypeExpression
-import org.utbot.engine.pc.UtMkTermArrayExpression
-import org.utbot.engine.pc.UtTrue
-import org.utbot.engine.pc.mkAnd
-import org.utbot.engine.pc.mkArrayConst
-import org.utbot.engine.pc.mkArrayWithConst
-import org.utbot.engine.pc.mkEq
-import org.utbot.engine.pc.mkInt
-import org.utbot.engine.pc.mkNot
-import org.utbot.engine.pc.mkOr
-import org.utbot.engine.pc.select
-import org.utbot.engine.pc.store
 import org.utbot.engine.namedStore
+import org.utbot.engine.overrides.strings.UtString
+import org.utbot.engine.pc.*
 import org.utbot.engine.symbolic.asHardConstraint
 import org.utbot.engine.toIntValue
 import org.utbot.engine.toPrimitiveValue
@@ -152,6 +131,14 @@ class TypeRegistry {
             "addrToTypeId",
             UtAddrSort,
             UtInt32Sort
+        )
+    }
+
+    private val addrToUISort: UtArrayExpressionBase by lazy {
+        mkArrayConst(
+            "addrToUISort",
+            UtAddrSort,
+            // UtUninterpretedSort
         )
     }
 

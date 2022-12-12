@@ -120,6 +120,22 @@ fun Context.mkDefaultParams(timeout: Int): Params = mkParams().apply {
     add("random_seed", 42)
     add("randomize", false)
 }
+fun Context.getUISort(): UninterpretedSort {
+    return mkUninterpretedSort("Type")
+}
+fun Context.getSubtypeAxiom(): FuncDecl {
+    val type = getUISort()
+    return mkFuncDecl("isSubtypeAxiom", arrayOf(type, type), boolSort)
+}
+fun Context.getSubclassAxiom(): FuncDecl {
+    val type = getUISort()
+    return mkFuncDecl("isSubclassAxiom", arrayOf(type, type), boolSort)
+}
+
+fun Context.getIsInterfaceAxiom(): FuncDecl {
+    val type = getUISort()
+    return mkFuncDecl("isInterfaceAxiom", type, boolSort)
+}
 
 data class UtSolver constructor(
     private val typeRegistry: TypeRegistry,
@@ -138,7 +154,7 @@ data class UtSolver constructor(
     var assumption: Assumption = emptyAssumption(),
 
     val type: UninterpretedSort = context.mkUninterpretedSort("Type"),
-    val isSubtypeAxiom: FuncDecl = context.mkFuncDecl("isSubTypeAxiom", arrayOf(type, type), context.boolSort),
+    val isSubtypeAxiom: FuncDecl = context.mkFuncDecl("isSubtypeAxiom", arrayOf(type, type), context.boolSort),
     val isSubclassAxiom: FuncDecl = context.mkFuncDecl("isSubclassAxiom", arrayOf(type, type), context.boolSort),
     val isInterfaceAxiom: FuncDecl = context.mkFuncDecl("isInterfaceAxiom", type, context.boolSort),
 
@@ -161,7 +177,7 @@ data class UtSolver constructor(
     //protection against solver reusage
     private var canBeCloned: Boolean = true
 
-    private fun fillInAxioms(): Query {
+    init {
         val x = context.mkSymbol("x")
         val y = context.mkSymbol("y")
         val z = context.mkSymbol("z")
@@ -186,8 +202,16 @@ data class UtSolver constructor(
             context.mkEq(isSubclassAxiom.apply(xConst, yConst) as BoolExpr?, isSubtypeAxiom.apply(xConst, yConst))
         ),
             1, null, null, null, null)
-        z3Solver.add(reflect, antisymmetry, transitivity, interfaceIsNotSubclass, subclassEqSubtypeForNotInterfaces)
-        return Query()
+
+        val notSubtypeTransitivity = context.mkForall(arrayOf(xConst, yConst, zConst), context.mkImplies(
+            context.mkNot(context.mkApp(isSubtypeAxiom, zConst, xConst) as BoolExpr),
+            context.mkOr(
+                context.mkNot(context.mkApp(isSubtypeAxiom, yConst, xConst) as BoolExpr),
+                context.mkNot(context.mkApp(isSubtypeAxiom, zConst, yConst) as BoolExpr)
+            )
+        ),
+            1, null, null, null, null)
+        z3Solver.add(reflect, antisymmetry, transitivity, interfaceIsNotSubclass, subclassEqSubtypeForNotInterfaces, notSubtypeTransitivity)
     }
 
     val simplificator: Simplificator
